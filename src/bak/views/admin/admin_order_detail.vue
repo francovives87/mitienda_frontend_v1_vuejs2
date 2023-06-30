@@ -1,0 +1,566 @@
+<template>
+  <div class="order-detail mt-3 mb-3">
+    <admin_menu></admin_menu>
+    <div class="container">
+      <div class="row">
+        <div class="col-8 col-sm-8">
+          <h6>Detalle de la orden: {{ order }}</h6>
+          <p class="detalle_orden">
+            Total: $ {{ orderDetail.total }} <br />
+            Cantidad de productos: {{ orderDetail.quantity_products }} <br />
+            Metodo de pago : {{ orderDetail.metodo_pago }} <br />
+            <span v-if="orderDetail.metodo_pago == 'mercadopago'">
+              MercadoPago estado:
+              <span
+                v-if="orderDetail.mercado_pago_approved == true"
+                style="color: green"
+                >Pago Aprobado</span
+              >
+              <span
+                v-if="orderDetail.mercado_pago_approved == false"
+                style="color: red"
+              >
+                Pago Rechazado o Cancelado
+              </span>
+            </span>
+            <br />
+            <font-awesome-icon icon="dollar-sign" /> Pago:
+            <span
+              style="color: darkgoldenrod"
+              v-if="orderDetail.pago == 'pendiente'"
+              >{{ orderDetail.pago }}</span
+            >
+            <span
+              style="color: green"
+              v-if="orderDetail.pago == 'completado'"
+              >{{ orderDetail.pago }}</span
+            >
+            <br />
+            Estado de la orden:
+            <span v-if="orderDetail.estado == 'Visto'" style="color: blue"
+              >{{ orderDetail.estado }} &nbsp;
+              <font-awesome-icon icon="check-double"
+            /></span>
+            <span v-if="orderDetail.estado == 'en espera'" style="color: yellow"
+              >{{ orderDetail.estado }} &nbsp; <font-awesome-icon icon="clock"
+            /></span>
+            <span v-if="orderDetail.estado == 'cancelada'" style="color: red"
+              >{{ orderDetail.estado }} &nbsp; <font-awesome-icon icon="times"
+            /></span>
+            <span
+              v-if="orderDetail.estado == 'Orden completada'"
+              style="color: green"
+              >{{ orderDetail.estado }} &nbsp; <font-awesome-icon icon="check"
+            /></span>
+            <span
+              v-if="orderDetail.estado == 'Producto despachado'"
+              style="color: purple"
+              >{{ orderDetail.estado }} &nbsp; <font-awesome-icon icon="truck"
+            /></span>
+            <br />
+            Fecha: {{ orderDetail.created }}
+          </p>
+        </div>
+        <div class="col-4 col-sm-4">
+          <div class="btn-group">
+            <button
+              type="button"
+              class="btn btn-primary dropdown-toggle"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+              :disabled="procesando"
+            >
+              Acciones
+            </button>
+            <ul class="dropdown-menu" style="color: blank !important">
+              <li>
+                <a
+                  class="dropdown-item"
+                  @click="OrderEstado('producto_despachado')"
+                  >Producto despachado</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  @click="OrderEstado('orden_completada')"
+                  >Orden completada</a
+                >
+              </li>
+              <li><hr class="dropdown-divider" /></li>
+              <li>
+                <a class="dropdown-item" @click="OrderPagoEstado('completado')"
+                  >Pago completado</a
+                >
+              </li>
+              <li>
+                <a class="dropdown-item" @click="OrderPagoEstado('pendiente')"
+                  >Pago pendiente</a
+                >
+              </li>
+              <li><hr class="dropdown-divider" /></li>
+              <li>
+                <a class="dropdown-item" @click="CancelOrder()"
+                  >Cancelar Orden</a
+                >
+              </li>
+              <li>
+                <a class="dropdown-item" @click="DeleteOrder()"
+                  >Eliminar Orden</a
+                >
+              </li>
+            </ul>
+          </div>
+          <span>
+            <div
+              class="spinner-border spinner-border-sm text-success"
+              role="status"
+              v-if="procesando == true"
+            >
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <span style="font-size: 12px" v-if="procesando == true">
+              Procesando...</span
+            >
+          </span>
+        </div>
+      </div>
+      <div class="container" v-if="orderDetail.mercado_pago_approved">
+        <div class="row">
+          <div class="col-12 col-sm-12">
+            <div class="card">
+              <div class="card-body">
+                <h6>MercadoPago Comprobante</h6>
+
+                <div class="row">
+                  <div class="col-6 col-sm-6">
+                    <p class="detalle_orden">
+                      <span class="data_item">collection_id: </span
+                      >{{ mercadoPago_detail.collection_id }} <br />
+                      <span class="data_item">collection_status: </span
+                      >{{ mercadoPago_detail.collection_status }} <br />
+                      <span class="data_item">payment_type: </span
+                      >{{ mercadoPago_detail.payment_type }} <br />
+                    </p>
+                  </div>
+                  <div class="col-6 col-sm-6">
+                    <p class="detalle_orden">
+                      <span class="data_item">payment_id: </span
+                      >{{ mercadoPago_detail.payment_id }} <br />
+
+                      <span class="data_item">merchant_order_id: </span
+                      >{{ mercadoPago_detail.merchant_order_id }} <br />
+
+                      <span class="data_item">external_reference: </span
+                      >{{ mercadoPago_detail.external_reference }} <br />
+                    </p>
+                  </div>
+                  <div class="col-12 col-sm-12">
+                    <p>
+                      <span style="font-size: 12px">
+                        Recuerde comprobar y comparar estos datos en su cuenta
+                        de MercadoPago.</span
+                      >
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container" v-if="orderDetail.personal_user_data">
+      <div class="row">
+        <div class="col-12 col-sm-12">
+          <div class="card">
+            <div class="card-body">
+              <h6>Datos del comprador</h6>
+              <br>
+              <div class="row">
+                <div class="col-6 col-sm-6">
+                  <p class="detalle_orden">
+                    <span class="data_item">Nombre: </span
+                    >{{ orderDetail.personal_user_data.nombre }} <br />
+                    <span class="data_item">Apellido: </span
+                    >{{ orderDetail.personal_user_data.apellido }} <br />
+                    <span class="data_item">Pais: </span
+                    >{{ orderDetail.personal_user_data.pais }} <br />
+
+                    <span class="data_item">Provincia: </span
+                    >{{ orderDetail.personal_user_data.estado }} <br />
+
+                    <span class="data_item">Ciudad: </span
+                    >{{ orderDetail.personal_user_data.ciudad }} <br />
+                  </p>
+                </div>
+                <div class="col-6 col-sm-6">
+                  <p class="detalle_orden">
+                    <span class="data_item">Direccion: </span
+                    >{{ orderDetail.personal_user_data.direccion }} <br />
+
+                    <span class="data_item">cod postal: </span
+                    >{{ orderDetail.personal_user_data.codigo_postal }} <br />
+
+                    <span class="data_item">Telefono: </span
+                    >{{ orderDetail.personal_user_data.telefono }} <br />
+
+                    <span class="data_item">Email: </span
+                    >{{ orderDetail.personal_user_data.user.email }} <br />
+
+                    <span class="data_item">Username: </span
+                    >{{ orderDetail.personal_user_data.user.username }} <br />
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container" v-if="orderDetail.anonymous_user_data">
+      <div class="row">
+        <div class="col-12 col-sm-12">
+          <div class="card">
+            <div class="card-body">
+              <h6>Datos del comprador</h6>
+              <br>
+               <span>Usuario no registrado.</span>
+              <div class="row">
+                <div class="col-6 col-sm-6">
+                  <p class="detalle_orden">
+                    <span class="data_item">Nombre: </span
+                    >{{ orderDetail.anonymous_user_data.nombre }} <br />
+                    <span class="data_item">Apellido: </span
+                    >{{ orderDetail.anonymous_user_data.apellido }} <br />
+                    <span class="data_item">Pais: </span
+                    >{{ orderDetail.anonymous_user_data.pais }} <br />
+
+                    <span class="data_item">Provincia: </span
+                    >{{ orderDetail.anonymous_user_data.estado }} <br />
+
+                    <span class="data_item">Ciudad: </span
+                    >{{ orderDetail.anonymous_user_data.ciudad }} <br />
+                  </p>
+                </div>
+                <div class="col-6 col-sm-6">
+                  <p class="detalle_orden">
+                    <span class="data_item">Direccion: </span
+                    >{{ orderDetail.anonymous_user_data.direccion }} <br />
+
+                    <span class="data_item">cod postal: </span
+                    >{{ orderDetail.anonymous_user_data.codigo_postal }} <br />
+
+                    <span class="data_item">Telefono: </span
+                    >{{ orderDetail.anonymous_user_data.telefono }} <br />
+
+                    <span class="data_item">Email: </span
+                    >{{ orderDetail.anonymous_user_data.email }} <br />
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="container">
+      <div class="container d-flex justify-content-center">
+        <div class="row">
+          <div
+            class="card ordenes"
+            v-for="(product, index) in orderDetail.productos"
+            :key="index"
+          >
+            <div class="card-body">
+              <div class="row">
+                <div class="col-4">
+                  <img
+                    style="width: 6rem; height: 6rem"
+                    :src="server + product.product.image"
+                    alt=""
+                  />
+                </div>
+                <div class="col-8">
+                  <h5 class="card-title">
+                    {{ product.product.title }}
+                    <p class="card-text">
+                      Cantidad {{ product.quantity }} <br />
+                      Precio: $ {{ product.price_sale }} <br />
+                      subtotal: $ {{ product.quantity * product.price_sale }}
+                      <br />
+                    </p>
+                    <p><admin_order_product_variation :product="product" /></p>
+                  </h5>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import axios from "axios";
+import admin_menu from "../../components/admin/admin_menu.vue";
+import admin_order_product_variation from "../../components/admin/admin_order_product_variation.vue";
+export default {
+  name: "admin_order_detail",
+  props: ["order"],
+  components: {
+    admin_menu,
+    admin_order_product_variation,
+  },
+  data() {
+    return {
+      orderDetail: [],
+      mercadoPago_detail: [],
+      product_to_restore_stock: [],
+      procesando: false,
+    };
+  },
+
+  created() {
+    this.GetOrder();
+  },
+
+  mounted() {},
+  methods: {
+    DeleteOrder() {
+      if (this.orderDetail.estado == "cancelada") {
+        this.$swal
+          .fire({
+            title: "Desea eliminar esta orden?",
+            text: "La orden ah sido eliminada.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            confirmButtonText: "SI, Borrarla!",
+          })
+          .then((result) => {
+            if (result.isConfirmed) {
+              axios
+                .delete(
+                  this.server +
+                    "/api/v1.0/admin/orders/delete/" +
+                    this.orderDetail.id
+                )
+                .then((response) => {
+                  console.log(response.data);
+                  this.$router.push({
+                    name: "AdminOrders",
+                  });
+                  this.$swal.fire(
+                    "Orden eliminada!",
+                    "Orden eliminada correctamente.",
+                    "success"
+                  );
+                })
+                .catch((error) => {
+                  console.log(error);
+                });
+            }
+          });
+      } else {
+        this.$swal.fire(
+          "Debe cancelar la orden primero para poder eliminarla.",
+          "",
+          "error"
+        );
+      }
+    },
+
+    OrderPagoEstado(estado) {
+      this.procesando = true;
+      let data = {
+        pago: estado,
+      };
+      axios
+        .put(
+          this.server +
+            "/api/v1.0/admin/orders/pay/change/" +
+            this.orderDetail.id,
+          data
+        )
+        .then((response) => {
+          console.log(response.data);
+          this.GetOrder();
+        })
+        .finally((this.procesando = false))
+        .catch((error) => {
+          console.log(error);
+        });
+    },
+
+    OrderEstado(estado) {
+      this.procesando = true;
+      if (estado == "producto_despachado") {
+        estado = "Producto despachado";
+      }
+      if (estado == "orden_completada") {
+        estado = "Orden completada";
+      }
+      console.log(estado);
+      let data = {
+        estado: estado,
+      };
+      axios
+        .put(
+          this.server +
+            "/api/v1.0/admin/orders/status/change/" +
+            this.orderDetail.id,
+          data
+        )
+        .then((response) => {
+          console.log(response.data);
+          this.GetOrder();
+        })
+        .finally((this.procesando = false))
+        .catch((error) => {
+          console.log(error);
+        });
+    },
+
+    CancelOrder() {
+      this.$swal
+        .fire({
+          title: "Desea cancelar esta orden?",
+          text: "si cancela la orden, el stock de los productos seran reestablecidos.",
+          icon: "warning",
+          showCancelButton: true,
+          confirmButtonColor: "#3085d6",
+          cancelButtonColor: "#d33",
+          confirmButtonText: "SI, Cancelarla!",
+        })
+        .then((result) => {
+          if (result.isConfirmed) {
+            this.procesando = true;
+            if (this.orderDetail.estado != "cancelada") {
+              let product = {
+                id: 0,
+                title: "",
+                variacion_id: null,
+                quantity: 0,
+              };
+              console.log("orderDetail");
+              console.log(this.orderDetail);
+              this.orderDetail.productos.forEach((element) => {
+                console.log(element.product.title);
+                product = {
+                  id: element.product.id,
+                  title: element.product.title,
+                  variacion_id: element.variacion_id,
+                  quantity: element.quantity,
+                };
+                this.product_to_restore_stock.push(product);
+              });
+
+              let cancel_order = {
+                order_id: this.orderDetail.id,
+                productos: this.product_to_restore_stock,
+              };
+
+              console.log(cancel_order);
+              axios
+                .post(
+                  this.server + "/api/v1.0/admin/orders/cancel/",
+                  cancel_order
+                )
+                .then((response) => {
+                  console.log(response);
+                  this.GetOrder();
+                })
+                .finally((this.procesando = false))
+                .catch((error) => {
+                  console.log(error);
+                });
+            } else {
+              this.$swal.fire("La orden ya fue cancelada!", "", "error");
+            }
+          }
+        });
+    },
+
+    GetOrder() {
+      axios
+        .get(this.server + "/api/v1.0/orders/detail/" + this.order, {
+          headers: {
+            Authorization: localStorage.getItem("access"),
+          },
+        })
+        .then((response) => {
+          console.log(response.data);
+          this.orderDetail = response.data;
+          this.checkIfVisto();
+          console.log("tiene mp");
+          if (response.data.mercado_pago_approved == true) {
+            axios
+              .get(
+                this.server +
+                  "/api/v1.0/admin/orders/mercadopago/detail/?order=" +
+                  this.order
+              )
+              .then((response) => {
+                console.log(response.data.results);
+                this.mercadoPago_detail = response.data.results[0];
+                console.log("variable");
+                console.log(this.mercadoPago_detail);
+              })
+              .catch((error) => {
+                console.log(error);
+              });
+          }
+        })
+        .catch((error) => {
+          console.log(error);
+        });
+    },
+    checkIfVisto() {
+      console.log("ESTE VIENE DEL CHECK");
+      console.log(this.order);
+      console.log(this.orderDetail);
+      if (this.orderDetail.visto == false) {
+        console.log("se ejecuto visto");
+        let data = new FormData();
+        data.append("order_id", this.order);
+        axios
+          .put(this.server + "/api/v1.0/admin/orders/visto/", data)
+          .then((response) => {
+            console.log(response);
+            this.GetOrder();
+          })
+          .catch((error) => {
+            console.log(error);
+          });
+      }
+    },
+  },
+};
+</script>
+
+<style scoped>
+.card-text {
+  font-size: 14px !important;
+}
+.ordenes {
+  margin-bottom: 2px !important;
+}
+.detalle_orden {
+  font-size: 14px !important;
+}
+.data_item {
+  color: black !important;
+}
+
+.order_new {
+  background-color: greenyellow !important;
+}
+a {
+  color: black !important;
+}
+</style>
